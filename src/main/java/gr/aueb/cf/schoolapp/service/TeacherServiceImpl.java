@@ -31,7 +31,7 @@ public class TeacherServiceImpl implements ITeacherService{
             teacher = mapInsert(dto);
             teacher = teacherDAO.insert(teacher);
             if (teacher.getId() == null) {
-                throw new Exception("Insert Error")
+                throw new Exception("Insert Error");
             }
             JPAHelper.commitTransaction();
         } catch (Exception e) {
