@@ -1,0 +1,83 @@
+package gr.aueb.cf.schoolapp.rest;
+
+import gr.aueb.cf.schoolapp.dto.TeacherInsertDTO;
+import gr.aueb.cf.schoolapp.dto.TeacherReadOnlyDTO;
+import gr.aueb.cf.schoolapp.model.Teacher;
+import gr.aueb.cf.schoolapp.service.ITeacherService;
+import gr.aueb.cf.schoolapp.service.exceptions.EntityNotFoundException;
+import gr.aueb.cf.schoolapp.validator.ValidatorUtil;
+
+import javax.inject.Inject;
+import javax.ws.rs.*;
+import javax.ws.rs.core.*;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
+
+@Path("/teachers")
+public class TeacherRestController {
+
+    @Inject
+    private ITeacherService teacherService;
+
+    @GET
+    @Path("")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getTeachersByLastname(@QueryParam("lastname") String lastname) {
+        List<Teacher> teachers;
+        try {
+            teachers = teacherService.getTeachersByLastname(lastname);
+            List<TeacherReadOnlyDTO> teachersDto = new ArrayList<>();
+            for (Teacher teacher : teachers) {
+                teachersDto.add(map(teacher));
+            }
+            return Response.status(Response.Status.OK).entity(teachersDto).build();
+        } catch (EntityNotFoundException e) {
+            return Response.status(Response.Status.NOT_FOUND).entity("Not Found").build();
+        }
+    }
+
+    @POST
+    @Path("")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response addTeacher(TeacherInsertDTO dto, @Context UriInfo uriInfo) {
+        List<String> errors = ValidatorUtil.validateDTO(dto);
+        Teacher teacher;
+        if (!errors.isEmpty()) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(errors).build();
+        }
+
+        try {
+            teacher = teacherService.insertTeacher(dto);
+            TeacherReadOnlyDTO teacherDto = map(teacher);
+            UriBuilder uriBuilder = uriInfo.getAbsolutePathBuilder();
+            URI uri = uriBuilder.path(Long.toString(teacherDto.getId())).build();
+            return Response.status(Response.Status.OK).location(uri).entity(teacherDto).build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Teacher insert error").build();
+        }
+    }
+
+    @GET
+    @Path("/{teacherId}")
+    public Response getTeacher(@PathParam("teacherId") Long teacherId) {
+        Teacher teacher;
+        try {
+            teacher = teacherService.getTeacherById(teacherId);
+            TeacherReadOnlyDTO dto = new TeacherReadOnlyDTO();
+            dto = map(teacher);
+            return Response.status(Response.Status.OK).entity(dto).build();
+        } catch (EntityNotFoundException e) {
+            return Response.status(Response.Status.NOT_FOUND).entity("Not found").build();
+        }
+    }
+
+    private TeacherReadOnlyDTO map(Teacher teacher) {
+        TeacherReadOnlyDTO teacherDto = new TeacherReadOnlyDTO();
+        teacherDto.setId(teacher.getId());
+        teacherDto.setFirstname(teacher.getFirstname());
+        teacherDto.setLastname(teacher.getLastname());
+        return teacherDto;
+    }
+}
